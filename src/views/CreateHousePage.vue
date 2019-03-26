@@ -68,6 +68,7 @@ export default {
       }
 
       this.$store.dispatch('createNewRoom', newPublication)
+      .then(() => this.$router.push({ name: 'HomePage' }))
     }
   }
 }
