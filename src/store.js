@@ -9,14 +9,19 @@ export default new Vuex.Store({
     rooms: {},
     services: {},
     users: {},
-    userId: '38St7Q8Zi2N1SPa5ahzssq9kbyp1',
+    userId: null,
     modals: {
-      login: false
+      login: false,
+      register: false
     }
   },
   getters: {
     modals: state => state.modals,
-    authUser: state => state.users[state.userId],
+    authUser: state => {
+      if (state.userId) {
+        return state.users[state.userId]
+      }
+    },
     rooms: state => state.rooms
   },
   actions: {
@@ -70,6 +75,33 @@ export default new Vuex.Store({
           resolve(state.users[id])
         })
       })
+    },
+    createUser ({ commit, state }, { name, email, password }) {
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+      .then((account) => {
+        const idUser = account.user.uid
+        const registeredAt = Math.floor(Date.now() / 1000)
+        const newUser = { name, email, registeredAt }
+
+        firebase.database().ref('users').child(idUser).set(newUser)
+        .then(() => {
+          commit('SET_ITEM', { resource: 'users', id: idUser, item: newUser})
+          resolve()
+        })
+      })
+    },
+    fetchAuthUser ({ dispatch, commit }) {
+      const id = firebase.auth().currentUser.uid
+      
+      dispatch('fetchUser', { id })
+      .then(() => commit('SET_AUTH_ID', id))
+    },
+    signIn (context, { email, password }) {
+      return firebase.auth().signInWithEmailAndPassword(email, password)
+    },
+    signOut ({ commit }) {
+      firebase.auth().signOut()
+      .then(() => commit('SET_AUTH_ID', null))
     }
   },
   mutations: {
@@ -87,6 +119,9 @@ export default new Vuex.Store({
       newItem['.key'] = id
 
       Vue.set(state[resource], id, newItem)
+    },
+    'SET_AUTH_ID' (state, value) {
+      state.userId = value
     }
   }
 })
